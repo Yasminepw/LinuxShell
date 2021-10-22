@@ -18,7 +18,6 @@
  
     
 int main(int argc, char const *argv[]) {
-
     while (1) {
         size_t index = 0,           
         n = 0;                 
@@ -32,22 +31,29 @@ int main(int argc, char const *argv[]) {
         }
         for (char *p = strtok (line, newline); p; p = strtok (NULL, newline)) {
             myargv[index] = p;   
-            printf ("%s\n", myargv[index++]);
+            //printf ("%s\n", myargv[index++]);
             if (index == buffer - 1)  
                 break;
+            index++;
         }
 
         //execvp
-        if (fork() == 0) {
-        int status_code = execvp(myargv[0], myargv);
-        printf("error\n");
- 
-        if (status_code == -1) {
+    pid_t childPid; 
+    childPid = fork();
+        if (childPid < 0) {    
             printf("error \n");
             return 1;
+        }
+    
+        else if (childPid == 0) {
+            if (execvp(myargv[0], myargv) == -1) {
+               printf("error\n");
             }
-         }
 
+        } else {      
+            waitpid(childPid, NULL, 0);
+        }
+       
         free(line); 
     } 
     return 0; 
