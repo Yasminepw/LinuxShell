@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +17,8 @@
 #define newline " \n"
  
     
-int main(int argc, char const *argv[], char* execvp[]) {
+int main(int argc, char const *argv[]) {
+
     while (1) {
         size_t index = 0,           
         n = 0;                 
@@ -37,10 +37,18 @@ int main(int argc, char const *argv[], char* execvp[]) {
                 break;
         }
 
-        /* call to execvp, etc. here */
+        //execvp
+        if (fork() == 0) {
+        int status_code = execvp(myargv[0], myargv);
+        printf("error\n");
+ 
+        if (status_code == -1) {
+            printf("error \n");
+            return 1;
+            }
+         }
 
-        free (line); 
-    }
-
-    return 0;
+        free(line); 
+    } 
+    return 0; 
 }
