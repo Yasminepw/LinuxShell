@@ -46,8 +46,8 @@ int main(int argc, char const *argv[]) {
             putchar ('\n');         
             break;
         }
-        for (char *p = strtok (line, "\n"); p; p = strtok (NULL, "\n")) {
-            myargv[index] = p;   
+        for (char *a = strtok (line, "\n"); a; a = strtok (NULL, "\n")) {
+            myargv[index] = a;   
             //printf ("%s\n", myargv[index++]);
             if (index == buffer - 1)  
                 break;
