@@ -15,8 +15,24 @@
 #define buffer 256
 #define prompt "myShell >> "
 #define newline " \n"
- 
+
+void execArgs(char **myargv){ 
+    pid_t childPid; 
+    childPid = fork();
+        if (childPid < 0) {    
+            printf("error \n");
+
+        }
     
+        else if (childPid == 0) {
+            if (execvp(myargv[0], myargv) == -1) {
+               printf("error\n");
+            }
+
+        } else {      
+            waitpid(childPid, NULL, 0);
+        }
+}
 int main(int argc, char const *argv[]) {
     while (1) {
         size_t index = 0,           
@@ -29,31 +45,14 @@ int main(int argc, char const *argv[]) {
             putchar ('\n');         
             break;
         }
-        for (char *p = strtok (line, newline); p; p = strtok (NULL, newline)) {
-            myargv[index] = p;   
+        for (char *a = strtok (line, newline); a; a = strtok (NULL, newline)) {
+            myargv[index] = a;   
             //printf ("%s\n", myargv[index++]);
             if (index == buffer - 1)  
                 break;
             index++;
         }
-
-        //execvp
-    pid_t childPid; 
-    childPid = fork();
-        if (childPid < 0) {    
-            printf("error \n");
-            return 1;
-        }
-    
-        else if (childPid == 0) {
-            if (execvp(myargv[0], myargv) == -1) {
-               printf("error\n");
-            }
-
-        } else {      
-            waitpid(childPid, NULL, 0);
-        }
-       
+        execArgs(myargv);
         free(line); 
     } 
     return 0; 
