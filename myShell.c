@@ -17,12 +17,61 @@
 #define buffer 256
 #define MAX_ARGS 20
 
-
-int r = TRUE; 
-int inBg = 0; 
-int redirectIn = 0;
-int redirectOut = 0;
+int inBackground = FALSE; 
+int redirectIn = FALSE;
+int redirectOut = FALSE;
 int infile, outfile;
+int needspipe = FALSE;
+
+void execPiped(char **myargv, char **myargvpiped) { 
+    int pipefd[2]; 
+    pid_t p1, p2;
+  
+    if (pipe(pipefd) < 0) {
+        printf("\nPipe could not be initialized");
+    }
+    p1 = fork();
+
+    if (p1 < 0) {
+        printf("\nCould not fork");
+    }
+  
+    if (p1 == 0) {
+        //Execution of child 1
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+  
+        if (execvp(myargv[0], myargv) < 0) {
+            printf("\nCould not execute command 1..");
+            exit(0);
+        }
+    } else {
+        // Parent executing
+        p2 = fork();
+  
+        if (p2 < 0) {
+            printf("\nCould not fork");
+        }
+  
+        // Execution of child 2
+        if (p2 == 0) {
+            close(pipefd[1]);
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[0]);
+            if (execvp(myargvpiped[0], myargvpiped) < 0) {
+                printf("\nCould not execute command 2..");
+                exit(0);
+            }
+        } else {
+            // closing both forks and parent executing, waiting for two children
+            close(pipefd[0]);
+            close(pipefd[1]);
+            wait(NULL);
+            wait(NULL);
+        }
+    }
+}
 
 void redirect(char **args){ 
     int i = 0;
@@ -47,9 +96,32 @@ void redirect(char **args){
             
             infile = open(args[i+1], O_RDONLY);
         }
-         i++;
+        //set | argument to null
+        else if(strcmp(args[i], "|") == 0) {
+            needspipe = TRUE;
+            // Seperate args before and after "|"
+            char *args1[MAX_ARGS]; 
+            char *args2[MAX_ARGS]; 
+            int j = 0; 
+
+            while(j < i){ 
+                args1[j] = args[j]; 
+                j++; 
+            }
+            args1[j] = NULL;
+            j = 0;
+            i++;
+            while(args[i] != NULL){ 
+                args2[j] = args[i]; 
+                j++;
+                i++; 
+            }
+            args2[j] = NULL;
+            execPiped(args1, args2);
+        }
+        
+        i++;
     }
-    //next arg
 }
 void execArgs(char **myargv){ 
     int childPid; 
@@ -57,7 +129,6 @@ void execArgs(char **myargv){
         if (childPid < 0) {    
             printf("error \n");
         }
-    
         else if (childPid == 0) {
             if(redirectIn == 1) {
                 dup2(infile, STDIN_FILENO);
@@ -69,11 +140,12 @@ void execArgs(char **myargv){
             printf("Error with command or executable\n");
             }
             else { 
-            //if(inBg == 0) {     
+            //if(inBackground == 0) {     
                 waitpid(childPid, NULL, 0);
            // }
         }
 }
+
 int main(int argc, char const *argv[]) {
     while (1) {
         size_t index = 0,           
@@ -94,7 +166,13 @@ int main(int argc, char const *argv[]) {
             index++;
         }
         redirect(myargv);
-        execArgs(myargv);
+        if (needspipe == FALSE) {
+            execArgs(myargv);
+        } else {
+            // Reset to false after pipe executes.
+            needspipe = FALSE;
+        }
+        
         free(line); 
     } 
     return 0; 
