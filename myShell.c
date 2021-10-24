@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+
 #define TRUE 1
 #define FALSE 0
 #define buffer 256
@@ -43,7 +44,7 @@ void execPiped(char **myargv, char **myargvpiped) {
         close(pipefd[1]);
   
         if (execvp(myargv[0], myargv) < 0) {
-            printf("\nCould not execute command 1..");
+            printf("\nCould not execute first command.");
             exit(0);
         }
     } else {
@@ -60,7 +61,7 @@ void execPiped(char **myargv, char **myargvpiped) {
             dup2(pipefd[0], STDIN_FILENO);
             close(pipefd[0]);
             if (execvp(myargvpiped[0], myargvpiped) < 0) {
-                printf("\nCould not execute command 2..");
+                printf("\nCould not execute second command");
                 exit(0);
             }
         } else {
@@ -76,28 +77,35 @@ void execPiped(char **myargv, char **myargvpiped) {
 void redirect(char **args){ 
     int i = 0;
     while (args[i] != NULL && i < MAX_ARGS){
+        //Checking for background execution with "&" command
+        if (strcmp(args[i], "&") == 0){
+            args[i] = NULL;
+            inBackground = TRUE;
+            puts("BACKGROUND EXECUTION");
+            break;
+        } 
         //output redirection ">"
-        if (strcmp(args[i], ">") == 0) {
+        else if (strcmp(args[i], ">") == FALSE) {
             redirectOut = TRUE;
             args[i] = NULL;
             outfile = open(args[i+1], O_WRONLY | O_TRUNC | O_CREAT);
         }
         //output append ">>"
-        else if(strcmp(args[i], ">>") == 0) {
+        else if(strcmp(args[i], ">>") == FALSE) {
             redirectOut = TRUE; 
             args[i] = NULL;
             outfile = open(args[i+1], O_WRONLY | O_APPEND | O_CREAT);
 
         }
         // //input redirection "<"
-        else if (strcmp(args[i], "<") == 0) {
+        else if (strcmp(args[i], "<") == FALSE) {
             redirectIn = TRUE;
             args[i] = NULL;
             
             infile = open(args[i+1], O_RDONLY);
         }
         //set | argument to null
-        else if(strcmp(args[i], "|") == 0) {
+        else if(strcmp(args[i], "|") == FALSE) {
             needspipe = TRUE;
             // Seperate args before and after "|"
             char *args1[MAX_ARGS]; 
@@ -125,25 +133,26 @@ void redirect(char **args){
 }
 void execArgs(char **myargv){ 
     int childPid; 
+
     childPid = fork();
-        if (childPid < 0) {    
-            printf("error \n");
+    if (childPid < 0) {    
+        printf("error \n");
+    }
+    else if (childPid == 0) {
+        if(redirectIn == 1) {
+            dup2(infile, STDIN_FILENO);
         }
-        else if (childPid == 0) {
-            if(redirectIn == 1) {
-                dup2(infile, STDIN_FILENO);
-            }
-            if(redirectOut == 1) {
-                dup2(outfile, STDOUT_FILENO);
-            }
-            execvp(myargv[0], myargv); 
-            printf("Error with command or executable\n");
-            }
-            else { 
-            //if(inBackground == 0) {     
+        if(redirectOut == TRUE) {
+            dup2(outfile, STDOUT_FILENO);
+        }
+        execvp(myargv[0], myargv); 
+        printf("Error with command or executable\n");
+    }  
+    else {   
+        if(inBackground == FALSE){ 
                 waitpid(childPid, NULL, 0);
-           // }
-        }
+            }
+    }
 }
 
 int main(int argc, char const *argv[]) {
