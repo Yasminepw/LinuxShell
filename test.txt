@@ -1,0 +1,4 @@
+ls -l > test2.txt
+cat < test2.txt > out.txt
+test2.txt >> out.txt
+cat out.txt | grep shell
