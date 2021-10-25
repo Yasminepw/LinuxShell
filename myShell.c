@@ -1,3 +1,7 @@
+//Yasmine Watkins 
+//CIS 3207 - 001
+//Project 2
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,12 +15,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "shell.h"
 
-
-#define TRUE 1
-#define FALSE 0
-#define buffer 256
-#define MAX_ARGS 20
 
 int inBackground = FALSE; 
 int redirectIn = FALSE;
@@ -24,6 +24,7 @@ int redirectOut = FALSE;
 int infile, outfile;
 int needspipe = FALSE;
 
+//Takes the output out of the first command and uses as input for the second command
 void execPiped(char **myargv, char **myargvpiped) { 
     int pipefd[2]; 
     pid_t p1, p2;
@@ -60,6 +61,8 @@ void execPiped(char **myargv, char **myargvpiped) {
             close(pipefd[1]);
             dup2(pipefd[0], STDIN_FILENO);
             close(pipefd[0]);
+
+            
             if (execvp(myargvpiped[0], myargvpiped) < 0) {
                 printf("\nCould not execute second command");
                 exit(0);
@@ -76,7 +79,12 @@ void execPiped(char **myargv, char **myargvpiped) {
 
 void redirect(char **args){ 
     int i = 0;
-    while (args[i] != NULL && i < MAX_ARGS){
+
+    if(input(args) == 1) {
+        // Builtins ran.
+        needspipe = TRUE;
+    } else {
+        while (args[i] != NULL && i < MAX_ARGS){
         //Checking for background execution with "&" command
         if (strcmp(args[i], "&") == 0){
             args[i] = NULL;
@@ -88,13 +96,13 @@ void redirect(char **args){
         else if (strcmp(args[i], ">") == FALSE) {
             redirectOut = TRUE;
             args[i] = NULL;
-            outfile = open(args[i+1], O_WRONLY | O_TRUNC | O_CREAT);
+            outfile = open(args[i+1], O_WRONLY | O_TRUNC | O_CREAT | S_IRWXU);
         }
         //output append ">>"
         else if(strcmp(args[i], ">>") == FALSE) {
             redirectOut = TRUE; 
             args[i] = NULL;
-            outfile = open(args[i+1], O_WRONLY | O_APPEND | O_CREAT);
+            outfile = open(args[i+1], O_WRONLY | O_APPEND | O_CREAT | S_IRWXU);
 
         }
         // //input redirection "<"
@@ -104,7 +112,7 @@ void redirect(char **args){
             
             infile = open(args[i+1], O_RDONLY);
         }
-        //set | argument to null
+        //This handles "|" for pipe 
         else if(strcmp(args[i], "|") == FALSE) {
             needspipe = TRUE;
             // Seperate args before and after "|"
@@ -130,10 +138,12 @@ void redirect(char **args){
         
         i++;
     }
+    }
+    
 }
+//Executes system commands
 void execArgs(char **myargv){ 
     int childPid; 
-
     childPid = fork();
     if (childPid < 0) {    
         printf("error \n");
@@ -153,17 +163,38 @@ void execArgs(char **myargv){
                 waitpid(childPid, NULL, 0);
             }
     }
-}
+} 
 
 int main(int argc, char const *argv[]) {
+    //Implementing batch file
+    FILE *input;
+    int prompt = TRUE;
+
+    if (argc == 1) {    // ./myshell
+        input = stdin;
+    } else if (argc == 2) {     // ./myshell <filename>
+        input = fopen(argv[1], "r");
+        if (input == NULL) {
+            printf("Error\n");
+            exit(1);
+        }
+        printf("file found\n");
+        prompt = FALSE;
+    }  else {   // ./myshell file file
+        printf("Error\n");
+        exit(1);
+    }
+    //Parsing to separate strings by spaces 
     while (1) {
         size_t index = 0,           
         n = 0;                 
         ssize_t nchr = 0;           
         char *line = NULL, *myargv[buffer] = {NULL};  
-
-        fputs ("myShell >> ", stdout);
-        if ((nchr = getline (&line, &n, stdin)) == -1) {
+        
+        if (prompt == TRUE) {
+            fputs ("myShell >> ", stdout);
+        }
+        if ((nchr = getline (&line, &n, input)) == -1) {
             putchar ('\n');         
             break;
         }
